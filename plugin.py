@@ -92,9 +92,9 @@ UNITMASK=63 # Unit for each car starts from 1, 65, 129, 193 (max 4 vehicles)
 DEVS={ #topic:      [ unit, Type, Subtype, Switchtype, "en name", "it name", "nl name", "se name", "hu name", "pl name", "fr name", "de_name"  ...other languages should follow  ],
     "EVSTATE":      [ 1, 243, 19, 0, {}, "EV state", "EV stato", "EV status", "EV status", "EV státusz", "EV staus", "Status VE", "EV Status" ],
     "EVBATTLEVEL":  [ 2, 243, 6, 0, {}, "EV battery level", "EV livello batteria", "batterijniveau", "EV batterinivå", "EV akku töltöttség", "EV poziom baterii", "Niveau de batterie", "EV Batterieladestand"],
-    "EVRANGE":      [ 3, 243, 31, 0, {'Custom': '1;km'}, "EV range", "EV autonomia", "EV bereik" , "EV räckvidd", "EV hatótáv", "EV zasięg", "Autonomie VE", "EV Reichweite" ],
+    "EVRANGE":      [ 3, 243, 31, 0, {'Custom': '1;mi'}, "EV range", "EV autonomia", "EV bereik" , "EV räckvidd", "EV hatótáv", "EV zasięg", "Autonomie VE", "EV Reichweite" ],
     "FUELLEVEL":    [ 4, 243, 6, 0, {}, "fuel level", "livello carburante", "brandstofniveau", "bränslenivå" , "üzemanyagszint", "poziom paliwa" ,"Niveau de carburant", "EV Ladestand"],
-    "FUELRANGE":    [ 5, 243, 31, 0, {'Custom': '1;km'}, "fuel range", "autonomia carburante", "brandstof bereik", "bränsleräckvidd" , "üzemanyag hatótáv", "zasięg paliwa", "Autonomie Carburant", "Reichweite" ],
+    "FUELRANGE":    [ 5, 243, 31, 0, {'Custom': '1;mi'}, "fuel range", "autonomia carburante", "brandstof bereik", "bränsleräckvidd" , "üzemanyag hatótáv", "zasięg paliwa", "Autonomie Carburant", "Reichweite" ],
     "ENGINEON":     [ 6, 244, 73, 0, {}, "engine ON", "motore acceso", "motor aan", "motor på", "motor be", "silnik włączony" ,"Moteur démarré", "Motor ein"],
     "ODOMETER":     [ 7, 113, 0, 3, {}, "odometer", "contachilometri", "kilometerteller", "odometer" , "kilométer-számláló", "licznik kilometrów" , "Compteur", "Kilometerstand" ],
     "LOCATION":     [ 8, 243, 19, 0, {}, "location", "posizione", "locatie", "plats", "hely", "pozycja", "Position", "Position" ],
@@ -546,13 +546,18 @@ class BasePlugin:
                 distance=round(self.distance(lat, lon, float(homeloc[0]), float(homeloc[1])), 1)
                 unit=base+DEVS['HOMEDIST'][0]; self.getDevID(unit); self.update(unit, 0, str(distance))
 
-                if hasattr(v,'data'):
-                    value=v.data
-                    if value != None:
-                        nValue=value['vehicleLocation']['speed']['value']
-                        sValue=str(nValue)
-                        unit=base+DEVS['SPEED'][0]; self.getDevID(unit); self.update(unit, nValue, sValue)
+                if hasattr(v, 'data'):
+                    value = getattr(v, 'data', None)
+                    if value and 'vehicleLocation' in value and 'speed' in value['vehicleLocation']:
+                        nValue = value['vehicleLocation']['speed']['value']
+                        sValue = str(nValue)
+                        unit = base + DEVS['SPEED'][0]
+                        self.getDevID(unit)
+                        self.update(unit, nValue, sValue)
                         Domoticz.Status(f"Vehicle {self.vehicleName} has odometer={v.odometer} speed={nValue} distance_from_home={distance} EV battery={batteryLevel}%")
+                    else:
+                        Domoticz.Status(f"Key 'vehicleLocation' or 'speed' missing for vehicle {self.vehicleName}.")
+
 
                 self._vehicleLoc[self.vehicleName]['latitude']=lat
                 self._vehicleLoc[self.vehicleName]['longitude']=lon
@@ -881,5 +886,4 @@ def onDeviceRemoved(DeviceID, Unit):
 def onSecurityEven(DeviceID, Unit, Level, Description):
     global _plugin
     _plugin.onSecurityEvent(DeviceID, Unit, Level, Description)
-
 
